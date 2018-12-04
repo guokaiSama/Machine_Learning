@@ -12,6 +12,121 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
 from sklearn.tree import DecisionTreeClassifier
 
+# 生成数据集
+def createFisheDataSet():
+    """
+    创建鱼类和非鱼类数据集
+    有两个特征：
+        1.不浮出水面是否可以生存
+        2.是否有脚蹼
+    lable:
+        yes是鱼类
+        no是非鱼类
+    """
+    dataSet = [[1, 1, 'yes'],
+            [1, 1, 'yes'],
+            [1, 0, 'no'],
+            [0, 1, 'no'],
+            [0, 1, 'no']]
+    labels = ['no surfacing', 'flippers']
+    return dataSet, labels
+
+# 计算香农熵
+def calcShannonEnt(dataSet):
+    """
+    计算dataSet的香农熵
+    """
+
+    # 求list的长度，表示训练数据的个数
+    numEntries = len(dataSet)
+
+    # 计算分类标签label出现的次数
+    labelCounts = {}
+
+    for featVec in dataSet:
+        # 将当前实例的标签存储，即每一行数据的最后一个数据代表的是标签
+        currentLabel = featVec[-1]
+        # 为所有可能的分类创建字典，如果当前的键值不存在，则扩展字典并将当前键值加入字典。每个键值都记录了当前类别出现的次数。
+        if currentLabel not in labelCounts.keys():
+            labelCounts[currentLabel] = 0
+        labelCounts[currentLabel] += 1
+
+    # 对于label标签的占比，求出label标签的香农熵
+    shannonEnt = 0.0
+    for key in labelCounts:
+        # 使用所有类标签的发生频率计算类别出现的概率。
+        prob = float(labelCounts[key])/numEntries
+
+        # 计算香农熵，以 2 为底求对数
+        shannonEnt -= prob * log(prob, 2)
+
+    return shannonEnt
+
+# 切分数据集
+def splitDataSet(dataSet, index, value):
+    """
+    根据index列（属性）进行分类，如果index列的值等于value的时候，就要将 index 划分到我们创建的新的数据集中
+    Args:
+        dataSet 数据集                 待划分的数据集
+        index 表示每一行的index列        划分数据集的特征
+        value 表示index列对应的value值   需要返回的特征的值。
+
+    """
+    retDataSet = []
+    for featVec in dataSet:
+        # 判断index列的值是否为value
+        if featVec[index] == value:
+
+            # 去除掉该值，构成新的数据集
+            reducedFeatVec = featVec[:index]
+            reducedFeatVec.extend(featVec[index+1:])
+            retDataSet.append(reducedFeatVec)
+
+    return retDataSet
+
+# 选择最优属性
+def chooseBestFeatureToSplit(dataSet):
+    """
+
+    Args:
+        dataSet 数据集
+    Returns:
+        bestFeature 最优的特征列
+    """
+    # 计算列数
+    numFeatures = len(dataSet[0]) - 1
+
+    # 数据集的原始信息熵
+    baseEntropy = calcShannonEnt(dataSet)
+
+    # 最优的信息增益值, 和最优的Featurn编号
+    bestInfoGain, bestFeature = 0.0, -1
+
+    for i in range(numFeatures):
+        # 获取对应的属性下的所有取值
+        featList = [example[i] for example in dataSet]
+
+        # 去重
+        uniqueVals = set(featList)
+
+        # 创建一个临时的信息熵
+        newEntropy = 0.0
+
+        # 遍历某一列的value集合，计算该列的信息熵
+        for value in uniqueVals:
+            subDataSet = splitDataSet(dataSet, i, value)
+            # 计算概率
+            prob = len(subDataSet)/float(len(dataSet))
+            # 计算信息熵
+            newEntropy += prob * calcShannonEnt(subDataSet)
+
+        # 计算信息增益
+        infoGain = baseEntropy - newEntropy
+        print ('infoGain=', infoGain, 'bestFeature=', i, baseEntropy, newEntropy)
+        if (infoGain > bestInfoGain):
+            bestInfoGain = infoGain
+            bestFeature = i
+    return bestFeature
 
 def classifierTree():
     # 绘制坐标点的步长
