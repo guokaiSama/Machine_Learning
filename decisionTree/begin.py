@@ -8,4 +8,5 @@ by:guoKaiSama
 """
 import classifierTree
 if __name__=="__main__":
-    pass
+    # 分类树，sklearn
+    classifierTree.classifierTree()
