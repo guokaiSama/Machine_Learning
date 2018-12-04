@@ -7,6 +7,10 @@ sklearn的决策树接口使用
 by:guoKaiSama
 """
 import classifierTree
+import regressorTree
 if __name__=="__main__":
     # 分类树，sklearn
-    classifierTree.classifierTree()
+    #classifierTree.classifierTree()
+    
+    # 回归树，sklearn
+    regressorTree.regressorTree()
