@@ -18,4 +18,6 @@ if __name__=="__main__":
     #手动实现决策树,鱼数据
     #classifierTree.fishTest()
     # 手动实现决策树,眼镜数据
-    classifierTree.glassTest()
+    #classifierTree.glassTest()
+    # 手动实现决策树,蘑菇数据集
+    classifierTree.mushroomTest()
