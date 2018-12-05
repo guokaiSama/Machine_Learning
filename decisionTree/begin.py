@@ -13,4 +13,7 @@ if __name__=="__main__":
     #classifierTree.classifierTree()
 
     # 回归树，sklearn
-    regressorTree.regressorTree()
+    #regressorTree.regressorTree()
+
+    #手动实现决策树
+    classifierTree.fishTest()
