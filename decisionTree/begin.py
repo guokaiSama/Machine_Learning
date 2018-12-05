@@ -15,5 +15,7 @@ if __name__=="__main__":
     # 回归树，sklearn
     #regressorTree.regressorTree()
 
-    #手动实现决策树
-    classifierTree.fishTest()
+    #手动实现决策树,鱼数据
+    #classifierTree.fishTest()
+    # 手动实现决策树,眼镜数据
+    classifierTree.glassTest()
