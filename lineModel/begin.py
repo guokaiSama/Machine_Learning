@@ -8,6 +8,7 @@ by:guoKaiSama
 """
 import standLinerRegres
 import locaLinearRegres
+import regularForRegress
 from numpy import mat
 # 计算分析预测误差的大小
 def rssError(yArr, yHatArr):
@@ -56,4 +57,9 @@ if __name__=="__main__":
     # locaLinearRegres.localLinearRegresMethod(k=0.005)
 
     # 预测鲍鱼的年龄,对比标准线性回归和局部加权线性回归
-    abaloneTest()
+    #abaloneTest()
+
+    # 测试岭回归
+    #regularForRegress.testRidgeRegression()
+    regularForRegress.teststageWise()
+
