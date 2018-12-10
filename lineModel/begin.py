@@ -10,6 +10,7 @@ import standLinerRegres
 import locaLinearRegres
 import regularForRegress
 from numpy import mat
+import logisticRegress
 # 计算分析预测误差的大小
 def rssError(yArr, yHatArr):
     '''
@@ -61,5 +62,9 @@ if __name__=="__main__":
 
     # 测试岭回归
     #regularForRegress.testRidgeRegression()
-    regularForRegress.teststageWise()
+    #regularForRegress.teststageWise()
+
+    # 测试逻辑回归与梯度上升
+    logisticRegress.testLogisticRegress()
+    #logisticRegress.fitLogistic()
 
