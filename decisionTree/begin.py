@@ -6,27 +6,38 @@ sklearn的决策树接口使用
 
 by:guoKaiSama
 """
-import classifierTree
-import regressorTree
+import classifierTree.ID3 as ID3
+import classifierTree.C4_5 as C45
+import classifierTree.sklearnClassfierTree as SKT
 if __name__=="__main__":
+
+    # begin *****************决策树****************** begin #
+    # 利用信息增益生成决策树(ID3)
+    #ID3.xiguaTest()
+
+    # 眼镜数据与蘑菇数据的实验
+    #ID3.glassTest()
+    #ID3.mushroomTest()
+
+
+    # 利用信息增益率生成决策树(C4_5)
+    #C45.xiguaTest()
+
     # 分类树，sklearn
-    #classifierTree.classifierTree()
-    #手动实现决策树,鱼数据
-    #classifierTree.fishTest()
-    # 手动实现决策树,眼镜数据
-    #classifierTree.glassTest()
-    # 手动实现决策树,蘑菇数据集
-    #classifierTree.mushroomTest()
+    SKT.classifierTree()
+
+    # end *****************决策树****************** end #
 
 
-    # 回归树，sklearn
+    # begin *****************回归树***************** begin #
+
     # regressorTree.regressorTree()
     # 测试数据集
-    testMat = mat(eye(4))
-    print(testMat)
-    print(type(testMat))
-    mat0, mat1 = binSplitDataSet(testMat, 1, 0.5)
-    print(mat0, '\n-----------\n', mat1)
+    #testMat = mat(eye(4))
+    #print(testMat)
+    #print(type(testMat))
+    #mat0, mat1 = binSplitDataSet(testMat, 1, 0.5)
+    #print(mat0, '\n-----------\n', mat1)
 
     # # 回归树
     # myDat = loadDataSet('./data/data1.txt')
