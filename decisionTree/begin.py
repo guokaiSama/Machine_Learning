@@ -9,7 +9,10 @@ by:guoKaiSama
 import classifierTree.ID3 as ID3
 import classifierTree.C4_5 as C45
 import classifierTree.sklearnClassfierTree as SKT
+import decisionGraph
 if __name__=="__main__":
+    # 利用graphviz来可视化Sklearn训练得到的决策树
+    #decisionGraph.sklearnGraph()
 
     # begin *****************决策树****************** begin #
     # 利用信息增益生成决策树(ID3)
@@ -25,7 +28,6 @@ if __name__=="__main__":
 
     # 分类树，sklearn
     SKT.classifierTree()
-
     # end *****************决策树****************** end #
 
 
