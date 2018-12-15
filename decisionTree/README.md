@@ -13,9 +13,15 @@
 &emsp;&emsp;代码入口：SKC.classifierTree()     
 &emsp;&emsp;该接口底层是基于Gini系数实现的
 
+## 5、回归树(Gini)接口
+&emsp;&emsp;代码入口：createTree(trainMat, ops=(1, 20))    
 
+## 6、模型树接口
+&emsp;&emsp;代码入口：createTree(trainMat, utils.modelLeaf, utils.modelErr, ops=(1, 20))
 
-
+## 7、回归树sklearn接口
+&emsp;&emsp;代码入口：SKR.regressorTree()       
+&emsp;&emsp;该接口底层是基于Gini系数实现的
 
 # 决策树调参
 &emsp;&emsp;[参见文档](./sklearn调参.md)
