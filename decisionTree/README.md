@@ -10,7 +10,7 @@
 &emsp;&emsp;待实现  
 
 ## 4、sklearn的决策树接口
-&emsp;&emsp;代码入口：SKT.classifierTree()     
+&emsp;&emsp;代码入口：SKC.classifierTree()     
 &emsp;&emsp;该接口底层是基于Gini系数实现的
 
 
