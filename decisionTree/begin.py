@@ -12,6 +12,7 @@ import classifierTree.sklearnClassfierTree as SKC
 import regressorTree.sklearnRegressorTree as SKR
 import regressorTree.giniTree as gini
 import decisionGraph
+import classifierTree.CART as giniCart
 if __name__=="__main__":
     # 利用graphviz来可视化Sklearn训练得到的决策树
     #decisionGraph.sklearnGraph()
@@ -27,6 +28,10 @@ if __name__=="__main__":
 
     # 利用信息增益率生成决策树(C4_5)
     #C45.xiguaTest()
+
+    # CART分类树
+    #giniCart.createGiniTree()
+
 
     # 分类树，sklearn
     #SKC.classifierTree()
