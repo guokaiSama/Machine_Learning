@@ -51,9 +51,9 @@ def abaloneTest():
     print("standRegress error Size is:", rssError(abY[100:199], standyHat.T.A))
 
 if __name__=="__main__":
-    # 标准线性回归，满秩
-    # standLinerRegres.standRegression()
-
+    # 标准线性回归，满秩,最小二乘法
+    #standLinerRegres.standRegresLeastSquare()
+    standLinerRegres.standRegresGrand()
     # 局部加权线性回归
     # locaLinearRegres.localLinearRegresMethod(k=0.005)
 
@@ -65,6 +65,6 @@ if __name__=="__main__":
     #regularForRegress.teststageWise()
 
     # 测试逻辑回归与梯度上升
-    logisticRegress.testLogisticRegress()
+    #logisticRegress.testLogisticRegress()
     #logisticRegress.fitLogistic()
 

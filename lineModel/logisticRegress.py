@@ -269,5 +269,3 @@ def personalIncome():
     print('the error rate is {}'.format(error_rate))
     return error_rate
     """
-
-personalIncome()
