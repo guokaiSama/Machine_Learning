@@ -10,12 +10,10 @@ import standLinerRegres
 import locaLinearRegres
 import ridgeForRegress
 from numpy import mat
-import logisticRegress
 import utils
 import methodCompare
 import stageWise
 import sklearnMethod
-import legoPricePredict
 if __name__=="__main__":
     # 标准线性回归，满秩,最小二乘法
     #standLinerRegres.standRegresLeastSquare()
@@ -32,14 +30,13 @@ if __name__=="__main__":
     # 测试岭回归L2,梯度下降法
     #ridgeForRegress.testRidgeRegresGrand()
 
-    # 前向逐步回归算法，与Lasso的结果相似
+    # 前向逐步回归算法，L1的算法（需要优化）
     #stageWise.stageWiseTest()
 
     # sklearn 的逻辑回归
     #sklearnMethod.sklearnLiner()
+    pass
 
-    # 线性回归综合示例,预测玩具的价格
-    legoPricePredict.legoPricePredict()
     # 测试逻辑回归与梯度上升
     #logisticRegress.testLogisticRegress()
     #logisticRegress.fitLogistic()

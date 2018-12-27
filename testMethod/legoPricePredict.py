@@ -57,16 +57,19 @@ def setDataCollect(filePath):
 
 # 交叉验证测试岭回归
 def crossValidation(xArr,yArr,numVal=10):
-    # 获得数据点个数，xArr和yArr具有相同长度
+    # 获得样本的数量
     m = len(yArr)
     indexList = range(m)
-    errorMat = zeros((numVal,30))
+    # 10折交叉验证
+    errorMat = np.zeros((numVal,30))
 
     # 主循环 交叉验证循环
     for i in range(numVal):
         # 随机拆分数据，将数据分为训练集（90%）和测试集（10%）
-        trainX=[]; trainY=[]
-        testX = []; testY = []
+        trainX=[]
+        trainY=[]
+        testX = []
+        testY = []
 
         # 对数据进行混洗操作
         random.shuffle(indexList)
@@ -86,7 +89,8 @@ def crossValidation(xArr,yArr,numVal=10):
         # 循环遍历矩阵中的30组回归系数
         for k in range(30):
             # 读取训练集和数据集
-            matTestX = mat(testX); matTrainX=mat(trainX)
+            matTestX = mat(testX)
+            matTrainX=mat(trainX)
             # 对数据进行标准化
             meanTrain = mean(matTrainX,0)
             varTrain = var(matTrainX,0)
