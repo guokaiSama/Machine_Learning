@@ -65,6 +65,3 @@ def stackingMethod():
     dt_model.fit(meta_train, train_y)
     df_predict = dt_model.predict(meta_test)
     print(df_predict)
-
-
-stackingMethod()
