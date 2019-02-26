@@ -10,4 +10,4 @@ by:guoKaiSama
 import stacking.stacking as stacking
 if __name__=="__main__":
     #利用gini系数生成决策树
-    stacking.stackingMethod()
+    #stacking.stackingMethod()
