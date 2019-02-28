@@ -8,6 +8,10 @@ by:guoKaiSama
 """
 
 import stacking.stacking as stacking
+import AdaBoost.adaBoostSklearn as sklearnAdaboost
 if __name__=="__main__":
     #利用gini系数生成决策树
     #stacking.stackingMethod()
+
+    # 使用sklearn的adaBoost算法
+    sklearnAdaboost.adaBoostSklearn()
