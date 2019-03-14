@@ -25,11 +25,8 @@ def loadDataSet(filename):
                 continue
             lineArr = []
             for featrue in line.split(','):
-                # strip()返回移除字符串头尾指定的字符生成的新字符串
                 str_f = featrue.strip()
 
-                # isdigit 如果是浮点型数值，就是 false，所以换成 isalpha() 函数
-                # if str_f.isdigit():   # 判断是否是数字
                 if str_f.isalpha():     # 如果是字母，说明是标签
                     # 添加分类标签
                     lineArr.append(str_f)
@@ -283,8 +280,8 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
     """evaluate_algorithm(评估算法性能，返回模型得分)
 
     Args:
-        dataset     原始数据集
-        algorithm   使用的算法
+        dataset     数据集
+        algorithm   算法
         n_folds     数据的份数
         *args       其他的参数
     Returns:
@@ -298,18 +295,6 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
     for fold in folds:
         train_set = list(folds)
         train_set.remove(fold)
-        # 将多个 fold 列表组合成一个 train_set 列表, 类似 union all
-        """
-        In [20]: l1=[[1, 2, 'a'], [11, 22, 'b']]
-        In [21]: l2=[[3, 4, 'c'], [33, 44, 'd']]
-        In [22]: l=[]
-        In [23]: l.append(l1)
-        In [24]: l.append(l2)
-        In [25]: l
-        Out[25]: [[[1, 2, 'a'], [11, 22, 'b']], [[3, 4, 'c'], [33, 44, 'd']]]
-        In [26]: sum(l, [])
-        Out[26]: [[1, 2, 'a'], [11, 22, 'b'], [3, 4, 'c'], [33, 44, 'd']]
-        """
         train_set = sum(train_set, [])
         test_set = list()
         # fold 表示从原始数据集 dataset 提取出来的测试集
@@ -326,21 +311,18 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
     return scores
 
 
-if __name__ == '__main__':
+def randomForestDemo():
 
     # 加载数据
-    dataset = loadDataSet('data/7.RandomForest/sonar-all-data.txt')
-    # print dataset
+    dataset = loadDataSet('./data/sonarData.txt')
 
-    n_folds = 5        # 分成5份数据，进行交叉验证
-    max_depth = 20     # 调参（自己修改） #决策树深度不能太深，不然容易导致过拟合
-    min_size = 1       # 决策树的叶子节点最少的元素数量
-    sample_size = 1.0  # 做决策树时候的样本的比例
-    # n_features = int((len(dataset[0])-1))
-    n_features = 15     # 调参（自己修改） #准确性与多样性之间的权衡
+    n_folds = 5         # 分成5份数据，进行交叉验证
+    max_depth = 20      # 决策树深度不能太深，不然容易导致过拟合
+    min_size = 1        # 决策树的叶子节点最少的元素数量
+    sample_size = 1.0   # 做决策树时候的样本的比例
+    n_features = 15     # 准确性与多样性之间的权衡
     for n_trees in [1, 10, 20, 30, 40, 50]:  # 理论上树是越多越好
         scores = evaluate_algorithm(dataset, random_forest, n_folds, max_depth, min_size, sample_size, n_trees, n_features)
-        # 每一次执行本文件时都能产生同一个随机数
         seed(1)
         print('random=', random())
         print('Trees: %d' % n_trees)

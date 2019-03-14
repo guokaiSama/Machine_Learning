@@ -224,16 +224,17 @@ def plotROC(predStrengths, classLabels):
     print("the Area Under the Curve is: ", ySum*xStep)
 
 
-if __name__ == "__main__":
+def adaBoostDemo():
 
     # 马疝病数据集
-    dataArr, labelArr = loadDataSet("../data/horseColicTraining.txt")
+    dataArr, labelArr = loadDataSet("./data/horseColicTraining.txt")
     weakClassArr, aggClassEst = adaBoostTrainDS(dataArr, labelArr, 40)
     print(weakClassArr, '\n-----\n', aggClassEst.T)
+
     # 计算ROC下面的AUC的面积大小
     plotROC(aggClassEst.T, labelArr)
     # 测试集合
-    dataArrTest, labelArrTest = loadDataSet("../data/horseColicTest.txt")
+    dataArrTest, labelArrTest = loadDataSet("./data/horseColicTest.txt")
     m = np.shape(dataArrTest)[0]
     predicting10 = adaClassify(dataArrTest, weakClassArr)
     errArr = np.mat(np.ones((m, 1)))

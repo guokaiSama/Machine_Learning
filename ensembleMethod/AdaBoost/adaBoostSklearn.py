@@ -14,7 +14,6 @@ def genFeature():
     # 将两组数据合成一组数据
     X = np.concatenate((X1, X2))
     y = np.concatenate((y1, - y2 + 1))
-    #plt.scatter(X[:, 0], X[:, 1], marker='o', c=y)
     return X,y
 
 def adaBoostSklearn():
