@@ -9,6 +9,7 @@ by:guoKaiSama
 
 import kMeans.kMeans as kMeans
 import kMeans.kMeansSklearn as sklearnKMeans
+import DBSCAN.DBSCANsklearn as dbsc
 if __name__=="__main__":
     # 传统Kmeans
     #kMeans.kMeansMethod()
@@ -20,4 +21,7 @@ if __name__=="__main__":
     # 对聚类结果进行评估
     #sklearnKMeans.calinskiHarabasz()
     # sklearn提供的miniBatchKMeans方法
-    sklearnKMeans.miniBatchKMeans()
+    #sklearnKMeans.miniBatchKMeans()
+
+    # sklearn提供的DBSCAN方法
+    dbsc.dbsc()
