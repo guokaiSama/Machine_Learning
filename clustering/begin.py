@@ -8,10 +8,16 @@ by:guoKaiSama
 """
 
 import kMeans.kMeans as kMeans
-
+import kMeans.kMeansSklearn as sklearnKMeans
 if __name__=="__main__":
     # 传统Kmeans
     #kMeans.kMeansMethod()
     # 二分 biKMeans
-    kMeans.biKMeansMethod()
+    #kMeans.biKMeansMethod()
 
+    # sklearn提供的kmeans方法
+    #sklearnKMeans.kMeans()
+    # 对聚类结果进行评估
+    #sklearnKMeans.calinskiHarabasz()
+    # sklearn提供的miniBatchKMeans方法
+    sklearnKMeans.miniBatchKMeans()
