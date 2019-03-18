@@ -10,6 +10,7 @@ by:guoKaiSama
 import kMeans.kMeans as kMeans
 import kMeans.kMeansSklearn as sklearnKMeans
 import DBSCAN.DBSCANsklearn as dbsc
+import BIRCH.BIRCHSklearn as birch
 if __name__=="__main__":
     # 传统Kmeans
     #kMeans.kMeansMethod()
@@ -24,4 +25,7 @@ if __name__=="__main__":
     #sklearnKMeans.miniBatchKMeans()
 
     # sklearn提供的DBSCAN方法
-    dbsc.dbsc()
+    #dbsc.dbsc()
+
+    # sklearn提供的BIRCH方法
+    birch.BirchMethod()
