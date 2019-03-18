@@ -11,6 +11,7 @@ import kMeans.kMeans as kMeans
 import kMeans.kMeansSklearn as sklearnKMeans
 import DBSCAN.DBSCANsklearn as dbsc
 import BIRCH.BIRCHSklearn as birch
+import spectralClustering.spectralMethod as sct
 if __name__=="__main__":
     # 传统Kmeans
     #kMeans.kMeansMethod()
@@ -28,4 +29,7 @@ if __name__=="__main__":
     #dbsc.dbsc()
 
     # sklearn提供的BIRCH方法
-    birch.BirchMethod()
+    #birch.BirchMethod()
+
+    # sklearn提供的谱聚类方法
+    sct.spectralMethod()
