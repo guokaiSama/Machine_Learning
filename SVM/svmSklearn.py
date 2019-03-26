@@ -1,273 +1,634 @@
 #!/usr/bin/python
 # coding:utf-8
-
-"""
-协同过滤：是通过将用户和其他用户的数据进行对比来实现推荐的。
-当知道了两个用户或两个物品之间的相似度，我们就可以利用已有的数据来预测未知用户的喜好。
-
-基于物品的相似度和基于用户的相似度：物品比较少则选择物品相似度，用户比较少则选择用户相似度。【矩阵还是小一点好计算】
-
-基于物品的相似度：计算物品之间的距离。由于物品A和物品C 相似度(相关度)很高，所以给买A的人推荐C。
-
-基于用户的相似度：计算用户之间的距离。由于用户A和用户C 相似度(相关度)很高，所以A和C是兴趣相投的人，对于C买的物品就会推荐给A。
-
-算法流程：
-寻找用户没有评级的菜肴，即在用户-物品矩阵中的0值。
-在用户没有评级的所有物品中，对每个物品预计一个可能的评级分数。这就是说：我们认为用户可能会对物品的打分（这就是相似度计算的初衷）。
-对这些物品的评分从高到低进行排序，返回前N个物品。
-
-
-基于内容的推荐有以下特点：
-（1）通过各种标签来标记菜肴
-（2）将这些属性作为相似度计算所需要的数据
-
-
-问题
-1）在大规模的数据集上，SVD分解会降低程序的速度
-2）存在其他很多规模扩展性的挑战性问题，比如矩阵的表示方法和计算相似度得分消耗资源。
-3）如何在缺乏数据时给出好的推荐-称为冷启动【简单说：用户不会喜欢一个无效的物品，而用户不喜欢的物品又无效】
-
-建议
-1）在大型系统中，SVD分解(可以在程序调入时运行一次)每天运行一次或者其频率更低，并且还要离线运行。
-2）在实际中，另一个普遍的做法就是离线计算并保存相似度得分。(物品相似度可能被用户重复的调用)
-3）冷启动问题，解决方案就是将推荐看成是搜索问题，通过各种标签／属性特征进行基于内容的推荐。
-"""
 import numpy as np
-def loadExData():
-    # 原始矩阵
-    return[[0, -1.6, 0.6],
-           [0, 1.2, 0.8],
-           [0, 0, 0],
-           [0, 0, 0]]
-def recommendData():
-    # 利用SVD提高推荐效果，菜肴矩阵
+import matplotlib.pyplot as plt
+from sklearn import datasets, svm
+from sklearn.svm import SVC
+from sklearn.datasets import make_moons, make_circles, make_classification
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+from os import listdir
+
+def loadDataSet(fileName):
+    dataMat = []
+    labelMat = []
+    fr = open(fileName)
+    for line in fr.readlines():
+        lineArr = line.strip().split('\t')
+        dataMat.append([float(lineArr[0]), float(lineArr[1])])
+        labelMat.append(float(lineArr[2]))
+    return dataMat, labelMat
+
+def selectJrand(i, m):
     """
-    行：代表人
-    列：代表菜肴名词
-    值：代表人对菜肴的评分，0表示未评分
-    """
-    return np.mat([[2, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 4, 0],
-            [3, 3, 4, 0, 3, 0, 0, 2, 2, 0, 0],
-            [5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 5, 0, 0, 5, 0],
-            [4, 0, 4, 0, 0, 0, 0, 0, 0, 0, 5],
-            [0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 4],
-            [0, 0, 0, 0, 0, 0, 5, 0, 0, 5, 0],
-            [0, 0, 0, 3, 0, 0, 0, 0, 4, 5, 0],
-            [1, 1, 2, 1, 1, 2, 1, 0, 4, 5, 0]])
-
-# 相似度计算，假定inA和inB 都是列向量
-# 基于欧氏距离
-def ecludSim(inA, inB):
-    return 1.0/(1.0 + la.norm(inA - inB))
-
-
-# pearsSim()函数会检查是否存在3个或更多的点。
-# corrcoef直接计算皮尔逊相关系数，范围[-1, 1]，归一化后[0, 1]
-def pearsSim(inA, inB):
-    # 如果不存在，该函数返回1.0，此时两个向量完全相关。
-    if len(inA) < 3:
-        return 1.0
-    return 0.5 + 0.5 * np.corrcoef(inA, inB, rowvar=0)[0][1]
-
-
-# 计算余弦相似度，如果夹角为90度，相似度为0；如果两个向量的方向相同，相似度为1.0
-def cosSim(inA, inB):
-    num = float(inA.T*inB)
-    denom = np.linalg.norm(inA)*np.linalg.norm(inB)
-    return 0.5 + 0.5*(num/denom)
-
-# 基于物品相似度的推荐引擎
-"""
-（1）求评论过物品i的用户集合
-（2）求评论过物品j的用户集合
-（3）求用户集合的交集，计算欧氏距离
-（4）当新来用户评论过wupini，那么我们就可以用相似度预测该用户对物品j的评分
-"""
-def standEst(dataMat, user, simMeas, item):
-    """
+    随机选择一个整数
     Args:
-        dataMat         训练数据集
-        user            用户编号
-        simMeas         相似度计算方法
-        item            未评分的物品编号
+        i  第一个alpha的下标
+        m  所有alpha的数目
     Returns:
-        ratSimTotal/simTotal     评分（0～5之间的值）
+        j  返回一个不为i的随机数，在0~m之间的整数值
     """
-    # 得到数据集中的物品数目
-    m,n = np.shape(dataMat)
-    # 初始化两个评分值
-    simTotal = 0.0
-    ratSimTotal = 0.0
+    j = i
+    while j == i:
+        j = int(np.random.uniform(0, m))
+    return j
 
-    # 遍历行中的每个物品（对用户评过分的物品进行遍历，并将它与其他物品进行比较）
-    for j in range(n):
-        userRating = dataMat[user, j]
-        # 如果某个物品的评分值为0，则跳过这个物品
-        if userRating == 0:
-            continue
+def clipAlpha(aj, H, L):
+    """clipAlpha(调整aj的值，使aj处于 L<=aj<=H)
+    Args:
+        aj  目标值
+        H   最大值
+        L   最小值
+    Returns:
+        aj  目标值
+    """
+    if aj > H:
+        aj = H
+    if L > aj:
+        aj = L
+    return aj
 
-        #找到item和j均不为0（有评分）的用户
-        overLap = np.nonzero(np.logical_and(dataMat[:, item].A > 0, dataMat[:, j].A > 0))[0]
-        # 如果相似度为0，则两着没有任何重合元素，终止本次循环
-        if len(overLap) == 0:
-            similarity = 0
+def smoSimple(dataMatIn, classLabels, C, toler, maxIter):
+    """smoSimple
+    Args:
+        dataMatIn    数据集
+        classLabels  lable
+        C   松弛变量(常量值)，允许有些数据点可以处于分隔面的错误一侧。
+            控制最大化间隔和保证大部分的函数间隔小于1.0这两个目标的权重。
+            可以通过调节该参数达到不同的结果。
+        toler   容错率（是指在某个体系中能减小一些因素或选择对某个系统产生不稳定的概率。）
+        maxIter 退出前最大的循环次数
+    Returns:
+        b       模型的常量值
+        alphas  拉格朗日乘子
+    """
+    dataMatrix = np.mat(dataMatIn)
+    # 矩阵转置
+    labelMat = np.mat(classLabels).transpose()
+    m, n = np.shape(dataMatrix)
+
+    # 初始化 b和alphas(alpha有点类似权重值。)
+    b = 0
+    alphas = np.mat(np.zeros((m, 1)))
+
+    # 没有任何alpha改变的情况下遍历数据的次数
+    iter = 0
+    while (iter < maxIter):
+        # 记录alpha是否已经进行优化，每次循环时设为0，然后再对整个集合顺序遍历
+        alphaPairsChanged = 0
+        for i in range(m):
+            # 我们预测的类别 y = w^Tx[i]+b; 其中因为 w = Σ(1~n) a[n]*lable[n]*x[n]
+            fXi = float(np.multiply(alphas, labelMat).T*(dataMatrix*dataMatrix[i, :].T)) + b
+            # 预测结果与真实结果比对，计算误差Ei
+            Ei = fXi - float(labelMat[i])
+
+            # 约束条件 (KKT条件是解决最优化问题的时用到的一种方法。我们这里提到的最优化问题通常是指对于给定的某一函数，求其在指定作用域上的全局最小值)
+            # 0<=alphas[i]<=C，但由于0和C是边界值，我们无法进行优化，因为需要增加一个alphas和降低一个alphas
+            # 表示发生错误的概率：labelMat[i]*Ei 如果超出了 toler， 才需要优化。至于正负号，我们考虑绝对值就对了。
+            '''
+            # 检验训练样本(xi, yi)是否满足KKT条件
+            yi*f(i) >= 1 and alpha = 0 (outside the boundary)
+            yi*f(i) == 1 and 0<alpha< C (on the boundary)
+            yi*f(i) <= 1 and alpha = C (between the boundary)
+            '''
+            if ((labelMat[i]*Ei < -toler) and (alphas[i] < C)) or ((labelMat[i]*Ei > toler) and (alphas[i] > 0)):
+                # 如果满足优化的条件，我们就 随机 选取非i的一个点，进行优化比较
+                j = selectJrand(i, m)
+                # 预测j的结果
+                fXj = float(np.multiply(alphas, labelMat).T*(dataMatrix*dataMatrix[j, :].T)) + b
+                Ej = fXj - float(labelMat[j])
+                alphaIold = alphas[i].copy()
+                alphaJold = alphas[j].copy()
+
+                # L和H用于将alphas[j]调整到0-C之间。如果L==H，就不做任何改变，直接执行continue语句
+                # labelMat[i] != labelMat[j] 表示异侧，就相减，否则是同侧，就相加。
+                if (labelMat[i] != labelMat[j]):
+                    L = max(0, alphas[j] - alphas[i])
+                    H = min(C, C + alphas[j] - alphas[i])
+                else:
+                    L = max(0, alphas[j] + alphas[i] - C)
+                    H = min(C, alphas[j] + alphas[i])
+                # 如果相同，就没发优化了
+                if L == H:
+                    print("L==H")
+                    continue
+
+                # eta是alphas[j]的最优修改量，如果eta==0，需要退出for循环的当前迭代过程
+                # 参考《统计学习方法》李航-P125~P128<序列最小最优化算法>
+                eta = 2.0 * dataMatrix[i, :]*dataMatrix[j, :].T - dataMatrix[i, :]*dataMatrix[i, :].T - dataMatrix[j, :]*dataMatrix[j, :].T
+                if eta >= 0:
+                    print("eta>=0")
+                    continue
+
+                # 计算出一个新的alphas[j]值
+                alphas[j] -= labelMat[j]*(Ei - Ej)/eta
+
+                # 并使用辅助函数，以及L和H对其进行调整
+                alphas[j] = clipAlpha(alphas[j], H, L)
+
+                # 检查alpha[j]是否只是轻微的改变，如果是的话，就退出for循环。
+                if (abs(alphas[j] - alphaJold) < 0.00001):
+                    print("j not moving enough")
+                    continue
+
+                # 然后alphas[i]和alphas[j]同样进行改变，虽然改变的大小一样，但是改变的方向正好相反
+                alphas[i] += labelMat[j]*labelMat[i]*(alphaJold - alphas[j])
+                # 在对alpha[i], alpha[j] 进行优化之后，给这两个alpha值设置一个常数b。
+                # w= Σ[1~n] ai*yi*xi => b = yj- Σ[1~n] ai*yi(xi*xj)
+                # 所以：  b1 - b = (y1-y) - Σ[1~n] yi*(a1-a)*(xi*x1)
+                # 为什么减2遍？ 因为是 减去Σ[1~n]，正好2个变量i和j，所以减2遍
+                b1 = b - Ei- labelMat[i]*(alphas[i]-alphaIold)*dataMatrix[i, :]*dataMatrix[i, :].T - labelMat[j]*(alphas[j]-alphaJold)*dataMatrix[i, :]*dataMatrix[j, :].T
+                b2 = b - Ej- labelMat[i]*(alphas[i]-alphaIold)*dataMatrix[i, :]*dataMatrix[j, :].T - labelMat[j]*(alphas[j]-alphaJold)*dataMatrix[j, :]*dataMatrix[j, :].T
+                if (0 < alphas[i]) and (C > alphas[i]):
+                    b = b1
+                elif (0 < alphas[j]) and (C > alphas[j]):
+                    b = b2
+                else:
+                    b = (b1 + b2)/2.0
+                alphaPairsChanged += 1
+                print("iter: %d i:%d, pairs changed %d" % (iter, i, alphaPairsChanged))
+        # 在for循环外，检查alpha值是否做了更新，如果在更新则将iter设为0后继续运行程序
+        # 知道更新完毕后，iter次循环无变化，才推出循环。
+        if (alphaPairsChanged == 0):
+            iter += 1
         else:
-            # 如果存在重合的物品，则基于这些重合物重新计算相似度。
-            similarity = simMeas(dataMat[overLap, item], dataMat[overLap, j])
+            iter = 0
+        print("iteration number: %d" % iter)
+    return b, alphas
 
-        # 相似度会不断累加，每次计算时还考虑相似度和当前用户评分的乘积
-        # similarity  用户相似度，   userRating 用户评分
-        simTotal += similarity
-        ratSimTotal += similarity * userRating
-    if simTotal == 0:
-        return 0
-
-    # 通过除以所有的评分总和，对上述相似度评分的乘积进行归一化，使得最后评分在0~5之间，这些评分用来对预测值进行排序
-    else:
-        return ratSimTotal/simTotal
-
-# 基于SVD的评分估计
-# 在recommend() 中，这个函数用于替换对standEst()的调用，该函数对给定用户给定物品构建了一个评分估计值
-def svdEst(dataMat, user, simMeas, item):
-    """svdEst(计算某用户未评分物品中，以对该物品和其他物品评分的用户的物品相似度，然后进行综合评分)
-
+def calcWs(alphas, dataArr, classLabels):
+    """
+    基于alpha计算w值
     Args:
-        dataMat         训练数据集
-        user            用户编号
-        simMeas         相似度计算方法
-        item            未评分的物品编号
+        alphas        拉格朗日乘子
+        dataArr       feature数据集
+        classLabels   目标变量数据集
     Returns:
-        ratSimTotal/simTotal     评分（0～5之间的值）
+        wc  回归系数
     """
-    # 物品数目
-    n = np.shape(dataMat)[1]
-    # 对数据集进行SVD分解
-    simTotal = 0.0
-    ratSimTotal = 0.0
+    X = np.mat(dataArr)
+    labelMat = np.mat(classLabels).transpose()
+    m, n = np.shape(X)
+    w = np.zeros((n, 1))
+    for i in range(m):
+        w += np.multiply(alphas[i] * labelMat[i], X[i, :].T)
+    return w
 
-    # 在SVD分解之后，我们只利用包含了90%能量值的奇异值，这些奇异值会以NumPy数组的形式得以保存
-    U, Sigma, VT = np.linalg.svd(dataMat)
+def plotfig_SVM(xMat, yMat, ws, b, alphas):
+    """
+    参考地址：
+       http://blog.csdn.net/maoersong/article/details/24315633
+       http://www.cnblogs.com/JustForCS/p/5283489.html
+       http://blog.csdn.net/kkxgx/article/details/6951959
+    """
 
-    # 如果要进行矩阵运算，就必须要用这些奇异值构建出一个对角矩阵
-    Sig4 = np.mat(np.eye(4) * Sigma[: 4])
+    xMat = np.mat(xMat)
+    yMat = np.mat(yMat)
 
-    # 利用U矩阵将物品转换到低维空间中，构建转换后的物品(物品+4个主要的特征)
-    xformedItems = dataMat.T * U[:, :4] * Sig4.I
-    # 对于给定的用户，for循环在用户对应行的元素上进行遍历，
-    # 这和standEst()函数中的for循环的目的一样，只不过这里的相似度计算时在低维空间下进行的。
-    for j in range(n):
-        userRating = dataMat[user, j]
-        if userRating == 0 or j == item:
-            continue
-        # 相似度的计算方法也会作为一个参数传递给该函数
-        similarity = simMeas(xformedItems[item, :].T, xformedItems[j, :].T)
-        # for 循环中加入了一条print语句，以便了解相似度计算的进展情况。如果觉得累赘，可以去掉
-        print ('the %d and %d similarity is: %f' % (item, j, similarity))
-        # 对相似度不断累加求和
-        simTotal += similarity
-        # 对相似度及对应评分值的乘积求和
-        ratSimTotal += similarity * userRating
-    if simTotal == 0:
-        return 0
+    # b原来是矩阵，先转为数组类型后其数组大小为（1,1），所以后面加[0]，变为(1,)
+    b = np.array(b)[0]
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    # 注意flatten的用法
+    ax.scatter(xMat[:, 0].flatten().A[0], xMat[:, 1].flatten().A[0])
+
+    # x最大值，最小值根据原数据集dataArr[:, 0]的大小而定
+    x = np.arange(-1.0, 10.0, 0.1)
+
+    # 根据x.w + b = 0 得到，其式子展开为w0.x1 + w1.x2 + b = 0, x2就是y值
+    y = (-b-ws[0, 0]*x)/ws[1, 0]
+    ax.plot(x, y)
+
+    for i in range(np.shape(yMat[0, :])[1]):
+        if yMat[0, i] > 0:
+            ax.plot(xMat[i, 0], xMat[i, 1], 'cx')
+        else:
+            ax.plot(xMat[i, 0], xMat[i, 1], 'kp')
+
+    # 找到支持向量，并在图中标红
+    for i in range(100):
+        if alphas[i] > 0.0:
+            ax.plot(xMat[i, 0], xMat[i, 1], 'ro')
+    plt.show()
+
+class optStruct:
+    def __init__(self, dataMatIn, classLabels, C, toler, kTup):  # Initialize the structure with the parameters
+        self.X = dataMatIn
+        self.labelMat = classLabels
+        self.C = C
+        self.tol = toler
+        self.m = np.shape(dataMatIn)[0]
+        self.alphas = np.mat(np.zeros((self.m, 1)))
+        self.b = 0
+        self.eCache = np.mat(np.zeros((self.m, 2)))  # first column is valid flag
+
+        # m行m列的矩阵
+        self.K = np.mat(np.zeros((self.m, self.m)))
+        for i in range(self.m):
+            self.K[:, i] = kernelTrans(self.X, self.X[i, :], kTup)
+def kernelTrans(X, A, kTup):  # calc the kernel or transform data to a higher dimensional space
+    """
+    核转换函数
+    Args:
+        X     dataMatIn数据集
+        A     dataMatIn数据集的第i行的数据
+        kTup  核函数的信息
+    Returns:
+    """
+    m, n = np.shape(X)
+    K = np.mat(np.zeros((m, 1)))
+    if kTup[0] == 'lin':
+        # linear kernel:   m*n * n*1 = m*1
+        K = X * A.T
+    elif kTup[0] == 'rbf':
+        for j in range(m):
+            deltaRow = X[j, :] - A
+            K[j] = deltaRow * deltaRow.T
+        # 径向基函数的高斯版本
+        K = np.exp(K / (-1 * kTup[1] ** 2))  # divide in NumPy is element-wise not matrix like Matlab
     else:
-        # 计算估计评分
-        return ratSimTotal / simTotal
+        raise NameError('Houston We Have a Problem -- That Kernel is not recognized')
+    return K
 
-# N=3表示输出top3个推荐结果
-def recommend(dataMat, user, N=3, simMeas=cosSim, estMethod=standEst):
-    # 每行一个用户，user用来表示用户所在的行数
-    # .A表示将matrix的数组转换成ndarray
-    # unratedItems所有没有评分的菜品的下标
-    unratedItems = np.nonzero(dataMat[user, :].A == 0)[1]
-
-    # 如果不存在未评分物品，那么就退出函数
-    if len(unratedItems) == 0:
-        return 'you rated everything'
-
-    # 物品的编号和评分值
-    itemScores = []
-    # 在未评分物品上进行循环
-    for item in unratedItems:
-        estimatedScore = estMethod(dataMat, user, simMeas, item)
-        # 寻找前N个未评级物品，调用standEst()来产生该物品的预测得分，该物品的编号和估计值会放在一个元素列表itemScores中
-        itemScores.append((item, estimatedScore))
-
-    # 按照估计得分，对该列表进行排序并返回。列表逆排序，第一个值就是最大值
-    return sorted(itemScores, key=lambda jj: jj[1], reverse=True)[: N]
-
-# 图像压缩函数
-# 加载并转换数据
-def imgLoadData(filename):
-    myl = []
-    # 打开文本文件，并从文件以数组方式读入字符
-    for line in open(filename).readlines():
-        newRow = []
-        for i in range(32):
-            newRow.append(int(line[i]))
-        myl.append(newRow)
-    # 矩阵调入后，就可以在屏幕上输出该矩阵
-    myMat = np.mat(myl)
-    return myMat
-
-
-# 实现图像压缩，允许基于任意给定的奇异值数目来重构图像
-def imgCompress(numSV=3, thresh=0.8):
-    """imgCompress( )
+def calcEk(oS, k):
+    """calcEk（求 Ek误差：预测值-真实值的差）
+    该过程在完整版的SMO算法中陪出现次数较多，因此将其单独作为一个方法
     Args:
-        numSV       Sigma长度
-        thresh      判断的阈值
+        oS  optStruct对象
+        k   具体的某一行
+    Returns:
+        Ek  预测结果与真实结果比对，计算误差Ek
     """
-    # 构建一个列表
-    myMat = imgLoadData('./data/imageData.txt')
+    fXk = float(np.multiply(oS.alphas, oS.labelMat).T * (oS.X * oS.X[k, :].T)) + oS.b
+    Ek = fXk - float(oS.labelMat[k])
+    return Ek
 
-    # Sigma是一个对角矩阵，因此需要建立一个全0矩阵，然后将前面的那些奇异值填充到对角线上。
-    U, Sigma, VT = np.linalg.svd(myMat)
-
-    # 分析插入的 Sigma 长度
-    analyse_data(Sigma, 20)
-
-    SigRecon = np.mat(np.eye(numSV) * Sigma[: numSV])
-    reconMat = U[:, :numSV] * SigRecon * VT[:numSV, :]
-    return reconMat
-
-
-def analyse_data(Sigma, loopNum=20):
-    """analyse_data(分析 Sigma 的长度取值)
+def selectJ(i, oS, Ei):  # this is the second choice -heurstic, and calcs Ej
+    """selectJ（返回最优的j和Ej）
+    内循环的启发式方法。
+    选择第二个(内循环)alpha的alpha值
+    这里的目标是选择合适的第二个alpha值以保证每次优化中采用最大步长。
+    该函数的误差与第一个alpha值Ei和下标i有关。
     Args:
-        Sigma         Sigma的值
-        loopNum       循环次数
+        i   具体的第i一行
+        oS  optStruct对象
+        Ei  预测结果与真实结果比对，计算误差Ei
+    Returns:
+        j  随机选出的第j一行
+        Ej 预测结果与真实结果比对，计算误差Ej
     """
-    # 总方差的集合（总能量值）
-    Sig2 = Sigma ** 2
-    SigmaSum = sum(Sig2)
-    for i in range(loopNum):
-        SigmaI = sum(Sig2[:i + 1])
-        '''
-        根据自己的业务情况，就行处理，设置对应的 Singma 次数
-        通常保留矩阵 80% ～ 90% 的能量，就可以得到重要的特征并取出噪声。
-        '''
-        print('主成分：%s, 方差占比：%s%%' % (format(i + 1, '2.0f'), format(SigmaI / SigmaSum * 100, '4.2f')))
+    maxK = -1
+    maxDeltaE = 0
+    Ej = 0
+    # 首先将输入值Ei在缓存中设置成为有效的。这里的有效意味着它已经计算好了。
+    oS.eCache[i] = [1, Ei]
 
-def recommendTest():
-    # 计算相似度的方法
-    myMat = recommendData()
-    print recommend(myMat, 1)
-    print recommend(myMat, 1, estMethod=svdEst)
-    print(recommend(myMat, 1, estMethod=svdEst, simMeas=pearsSim))
+    # 非零E值的行的list列表，所对应的alpha值
+    validEcacheList = np.nonzero(oS.eCache[:, 0].A)[0]
+    if (len(validEcacheList)) > 1:
+        for k in validEcacheList:  # 在所有的值上进行循环，并选择其中使得改变最大的那个值
+            if k == i:
+                continue  # don't calc for i, waste of time
 
-def sklearnSVD():
-    # 使用sklearn对矩阵进行SVD分解
-    Data = loadExData()
-    print('Data:', Data)
-    U, Sigma, VT = np.linalg.svd(Data)
+            # 求 Ek误差：预测值-真实值的差
+            Ek = calcEk(oS, k)
+            deltaE = abs(Ei - Ek)
+            if (deltaE > maxDeltaE):
+                maxK = k
+                maxDeltaE = deltaE
+                Ej = Ek
+        return maxK, Ej
+    else:  # 如果是第一次循环，则随机选择一个alpha值
+        j = selectJrand(i, oS.m)
 
-    print('U:', U)
-    print('Sigma', Sigma)
-    print('VT:', VT)
+        # 求 Ek误差：预测值-真实值的差
+        Ej = calcEk(oS, j)
+    return j, Ej
 
-    # 重构一个3x3的矩阵Sig3
-    Sig3 = np.mat([[Sigma[0], 0, 0], [0, Sigma[1], 0], [0, 0, Sigma[2]]])
-    print(U[:, :3] * Sig3 * VT[:3, :])
+
+def updateEk(oS, k):  # after any alpha has changed update the new value in the cache
+    """updateEk（计算误差值并存入缓存中。）
+    在对alpha值进行优化之后会用到这个值。
+    Args:
+        oS  optStruct对象
+        k   某一列的行号
+    """
+
+    # 求 误差：预测值-真实值的差
+    Ek = calcEk(oS, k)
+    oS.eCache[k] = [1, Ek]
+
+def innerL(i, oS):
+    """innerL
+    内循环代码
+    Args:
+        i   具体的某一行
+        oS  optStruct对象
+    Returns:
+        0   找不到最优的值
+        1   找到了最优的值，并且oS.Cache到缓存中
+    """
+
+    # 求 Ek误差：预测值-真实值的差
+    Ei = calcEk(oS, i)
+
+    # 约束条件 (KKT条件是解决最优化问题的时用到的一种方法。我们这里提到的最优化问题通常是指对于给定的某一函数，求其在指定作用域上的全局最小值)
+    # 0<=alphas[i]<=C，但由于0和C是边界值，我们无法进行优化，因为需要增加一个alphas和降低一个alphas。
+    # 表示发生错误的概率：labelMat[i]*Ei 如果超出了 toler， 才需要优化。至于正负号，我们考虑绝对值就对了。
+    '''
+    # 检验训练样本(xi, yi)是否满足KKT条件
+    yi*f(i) >= 1 and alpha = 0 (outside the boundary)
+    yi*f(i) == 1 and 0<alpha< C (on the boundary)
+    yi*f(i) <= 1 and alpha = C (between the boundary)
+    '''
+    if ((oS.labelMat[i] * Ei < -oS.tol) and (oS.alphas[i] < oS.C)) or ((oS.labelMat[i] * Ei > oS.tol) and (oS.alphas[i] > 0)):
+        # 选择最大的误差对应的j进行优化。效果更明显
+        j, Ej = selectJ(i, oS, Ei)
+        alphaIold = oS.alphas[i].copy()
+        alphaJold = oS.alphas[j].copy()
+
+        # L和H用于将alphas[j]调整到0-C之间。如果L==H，就不做任何改变，直接return 0
+        if (oS.labelMat[i] != oS.labelMat[j]):
+            L = max(0, oS.alphas[j] - oS.alphas[i])
+            H = min(oS.C, oS.C + oS.alphas[j] - oS.alphas[i])
+        else:
+            L = max(0, oS.alphas[j] + oS.alphas[i] - oS.C)
+            H = min(oS.C, oS.alphas[j] + oS.alphas[i])
+        if L == H:
+            print("L==H")
+            return 0
+
+        # eta是alphas[j]的最优修改量，如果eta==0，需要退出for循环的当前迭代过程
+        # 参考《统计学习方法》李航-P125~P128<序列最小最优化算法>
+        eta = 2.0 * oS.X[i, :] * oS.X[j, :].T - oS.X[i, :] * oS.X[i, :].T - oS.X[j, :] * oS.X[j, :].T
+        if eta >= 0:
+            print("eta>=0")
+            return 0
+
+        # 计算出一个新的alphas[j]值
+        oS.alphas[j] -= oS.labelMat[j] * (Ei - Ej) / eta
+        # 并使用辅助函数，以及L和H对其进行调整
+        oS.alphas[j] = clipAlpha(oS.alphas[j], H, L)
+        # 更新误差缓存
+        updateEk(oS, j)
+
+        # 检查alpha[j]是否只是轻微的改变，如果是的话，就退出for循环。
+        if (abs(oS.alphas[j] - alphaJold) < 0.00001):
+            print("j not moving enough")
+            return 0
+
+        # 然后alphas[i]和alphas[j]同样进行改变，虽然改变的大小一样，但是改变的方向正好相反
+        oS.alphas[i] += oS.labelMat[j] * oS.labelMat[i] * (alphaJold - oS.alphas[j])
+        # 更新误差缓存
+        updateEk(oS, i)
+
+        # 在对alpha[i], alpha[j] 进行优化之后，给这两个alpha值设置一个常数b。
+        # w= Σ[1~n] ai*yi*xi => b = yj Σ[1~n] ai*yi(xi*xj)
+        # 所以：  b1 - b = (y1-y) - Σ[1~n] yi*(a1-a)*(xi*x1)
+        # 为什么减2遍？ 因为是 减去Σ[1~n]，正好2个变量i和j，所以减2遍
+        b1 = oS.b - Ei - oS.labelMat[i] * (oS.alphas[i] - alphaIold) * oS.X[i, :] * oS.X[i, :].T - oS.labelMat[j] * (oS.alphas[j] - alphaJold) * oS.X[i, :] * oS.X[j, :].T
+        b2 = oS.b - Ej - oS.labelMat[i] * (oS.alphas[i] - alphaIold) * oS.X[i, :] * oS.X[j, :].T - oS.labelMat[j] * (oS.alphas[j] - alphaJold) * oS.X[j, :] * oS.X[j, :].T
+        if (0 < oS.alphas[i]) and (oS.C > oS.alphas[i]):
+            oS.b = b1
+        elif (0 < oS.alphas[j]) and (oS.C > oS.alphas[j]):
+            oS.b = b2
+        else:
+            oS.b = (b1 + b2) / 2.0
+        return 1
+    else:
+        return 0
+
+def genData():
+    # 生成100个用于二分类的数据
+    X, y = make_circles(noise=0.2, factor=0.5, random_state=1)
+    X = StandardScaler().fit_transform(X)
+    return X,y
+
+def sklearnSVM():
+    # 使用sklearn中的SVM对数据进行训练
+    # 使用网格搜索，在C=(0.1,1,10)和gamma=(1, 0.1, 0.01)形成的9种情况中选择最好的超参数，这里用了4折交叉验证。
+    X, y=genData()
+    grid = GridSearchCV(SVC(), param_grid={"C": [0.1, 1, 10], "gamma": [1, 0.1, 0.01]}, cv=4)
+    grid.fit(X, y)
+    print("The best parameters are %s with a score of %0.2f"
+          % (grid.best_params_, grid.best_score_))
+
+
+def simpleSVM():
+    # 获取特征和lable
+    dataArr, labelArr = loadDataSet('./data/simpleSvm.txt')
+
+    # b是常量值， alphas是拉格朗日乘子
+    b, alphas = smoSimple(dataArr, labelArr, 0.6, 0.001, 40)
+    print('/n/n/n')
+    print('b=', b)
+    print('alphas[alphas>0]=', alphas[alphas > 0])
+    print('shape(alphas[alphas > 0])=', np.shape(alphas[alphas > 0]))
+    for i in range(100):
+        if alphas[i] > 0:
+            print(dataArr[i], labelArr[i])
+    # 画图
+    ws = calcWs(alphas, dataArr, labelArr)
+    plotfig_SVM(dataArr, labelArr, ws, b, alphas)
+
+def smoP(dataMatIn, classLabels, C, toler, maxIter, kTup=('lin', 0)):
+    """
+    完整SMO算法外循环，与smoSimple有些类似，但这里的循环退出条件更多一些
+    Args:
+        dataMatIn    数据集
+        classLabels  类别标签
+        C   松弛变量(常量值)，允许有些数据点可以处于分隔面的错误一侧。
+            控制最大化间隔和保证大部分的函数间隔小于1.0这两个目标的权重。
+            可以通过调节该参数达到不同的结果。
+        toler   容错率
+        maxIter 退出前最大的循环次数
+    Returns:
+        b       模型的常量值
+        alphas  拉格朗日乘子
+    """
+
+    # 创建一个 optStruct 对象
+    oS = optStruct(np.mat(dataMatIn), np.mat(classLabels).transpose(), C, toler, kTup=('lin', 0))
+    iter = 0
+    entireSet = True
+    alphaPairsChanged = 0
+
+    # 循环遍历：循环maxIter次 并且 （alphaPairsChanged存在可以改变 or 所有行遍历一遍）
+    # 循环迭代结束 或者 循环遍历所有alpha后，alphaPairs还是没变化
+    while (iter < maxIter) and ((alphaPairsChanged > 0) or (entireSet)):
+        alphaPairsChanged = 0
+
+        #  当entireSet=true or 非边界alpha对没有了；就开始寻找 alpha对，然后决定是否要进行else。
+        if entireSet:
+            # 在数据集上遍历所有可能的alpha
+            for i in range(oS.m):
+                # 是否存在alpha对，存在就+1
+                alphaPairsChanged += innerL(i, oS)
+                print("fullSet, iter: %d i:%d, pairs changed %d" % (iter, i, alphaPairsChanged))
+            iter += 1
+        # 对已存在 alpha对，选出非边界的alpha值，进行优化。
+        else:
+            # 遍历所有的非边界alpha值，也就是不在边界0或C上的值。
+            nonBoundIs = np.nonzero((oS.alphas.A > 0) * (oS.alphas.A < C))[0]
+            for i in nonBoundIs:
+                alphaPairsChanged += innerL(i, oS)
+                print("non-bound, iter: %d i:%d, pairs changed %d" % (iter, i, alphaPairsChanged))
+            iter += 1
+
+        # 如果找到alpha对，就优化非边界alpha值，否则，就重新进行寻找，如果寻找一遍 遍历所有的行还是没找到，就退出循环。
+        if entireSet:
+            entireSet = False  # toggle entire set loop
+        elif (alphaPairsChanged == 0):
+            entireSet = True
+        print("iteration number: %d" % iter)
+    return oS.b, oS.alphas
+
+def completeSVM():
+    # 获取特征和lable
+    dataArr, labelArr = loadDataSet('./data/simpleSvm.txt')
+
+    # b是常量值， alphas是拉格朗日乘子
+    b, alphas = smoP(dataArr, labelArr, 0.6, 0.001, 40)
+    print('/n/n/n')
+    print('b=', b)
+    print('alphas[alphas>0]=', alphas[alphas > 0])
+    print('shape(alphas[alphas > 0])=', np.shape(alphas[alphas > 0]))
+    for i in range(100):
+        if alphas[i] > 0:
+            print(dataArr[i], labelArr[i])
+    # 画图
+    ws = calcWs(alphas, dataArr, labelArr)
+    plotfig_SVM(dataArr, labelArr, ws, b, alphas)
+
+def testRbf(k1=1.3):
+    dataArr, labelArr = loadDataSet('./data/SetRBF.txt')
+    b, alphas = smoP(dataArr, labelArr, 200, 0.0001, 10000, ('rbf', k1))  # C=200 important
+    datMat = np.mat(dataArr)
+    labelMat = np.mat(labelArr).transpose()
+    svInd = np.nonzero(alphas.A > 0)[0]
+    sVs = datMat[svInd]  # get matrix of only support vectors
+    labelSV = labelMat[svInd]
+    print("there are %d Support Vectors" % np.shape(sVs)[0])
+    m, n = np.shape(datMat)
+    errorCount = 0
+    for i in range(m):
+        kernelEval = kernelTrans(sVs, datMat[i, :], ('rbf', k1))
+
+        # 和这个svm-simple类似： fXi = float(multiply(alphas, labelMat).T*(dataMatrix*dataMatrix[i, :].T)) + b
+        predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b
+        if np.sign(predict) != np.sign(labelArr[i]):
+            errorCount += 1
+    print("the training error rate is: %f" % (float(errorCount) / m))
+
+    dataArr, labelArr = loadDataSet('./data/SetRBF2.txt')
+    errorCount = 0
+    datMat = np.mat(dataArr)
+    labelMat = np.mat(labelArr).transpose()
+    m, n = np.shape(datMat)
+    for i in range(m):
+        kernelEval = kernelTrans(sVs, datMat[i, :], ('rbf', k1))
+        predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b
+        if np.sign(predict) != np.sign(labelArr[i]):
+            errorCount += 1
+    print("the test error rate is: %f" % (float(errorCount) / m))
+
+def rbfSVM():
+    testRbf(0.8)
+
+
+
+
+
+
+
+def img2vector(filename):
+    returnVect = np.zeros((1, 1024))
+    fr = open(filename)
+    for i in range(32):
+        lineStr = fr.readline()
+        for j in range(32):
+            returnVect[0, 32 * i + j] = int(lineStr[j])
+    return returnVect
+
+def loadImages(dirName):
+    hwLabels = []
+    print(dirName)
+    trainingFileList = listdir(dirName)  # load the training set
+    m = len(trainingFileList)
+    trainingMat = np.zeros((m, 1024))
+    for i in range(m):
+        fileNameStr = trainingFileList[i]
+        fileStr = fileNameStr.split('.')[0]  # take off .txt
+        classNumStr = int(fileStr.split('_')[0])
+        if classNumStr == 9:
+            hwLabels.append(-1)
+        else:
+            hwLabels.append(1)
+        trainingMat[i, :] = img2vector('%s/%s' % (dirName, fileNameStr))
+    return trainingMat, hwLabels
+
+def testDigits(kTup=('rbf', 10)):
+    # 1. 导入训练数据
+    dataArr, labelArr = loadImages('./data/trainingDigits')
+    b, alphas = smoP(dataArr, labelArr, 200, 0.0001, 10000, kTup)
+    datMat = np.mat(dataArr)
+    labelMat = np.mat(labelArr).transpose()
+    svInd = np.nonzero(alphas.A > 0)[0]
+    sVs = datMat[svInd]
+    labelSV = labelMat[svInd]
+    # print("there are %d Support Vectors" % shape(sVs)[0])
+    m, n = np.shape(datMat)
+    errorCount = 0
+    for i in range(m):
+        kernelEval = kernelTrans(sVs, datMat[i, :], kTup)
+        # 1*m * m*1 = 1*1 单个预测结果
+        predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b
+        if np.sign(predict) != np.sign(labelArr[i]): errorCount += 1
+    print("the training error rate is: %f" % (float(errorCount) / m))
+
+    # 2. 导入测试数据
+    dataArr, labelArr = loadImages('./data/testDigits')
+    errorCount = 0
+    datMat = np.mat(dataArr)
+    labelMat = np.mat(labelArr).transpose()
+    m, n = np.shape(datMat)
+    for i in range(m):
+        kernelEval = kernelTrans(sVs, datMat[i, :], kTup)
+        predict = kernelEval.T * np.multiply(labelSV, alphas[svInd]) + b
+        if np.sign(predict) != np.sign(labelArr[i]): errorCount += 1
+    print("the test error rate is: %f" % (float(errorCount) / m))
+def digitsSVM():
+    # 手写识别问题
+    testDigits(('rbf', 0.1))
+    # testDigits(('rbf', 5))
+    # testDigits(('rbf', 10))
+    # testDigits(('rbf', 50))
+    # testDigits(('rbf', 100))
+    # testDigits(('lin'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

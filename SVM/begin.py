@@ -6,10 +6,19 @@ by:guoKaiSama
 """
 import svmSklearn
 if __name__=="__main__":
-    # 使用sklearn对矩阵进行SVD分解
-    #recomSVD.sklearnSVD()
-    # 基于协同过滤的推荐系统
-    #recomSVD.recommendTest()
-    # 压缩图片,允许基于任意给定的奇异值数目来重构图像
-    print recomSVD.imgCompress(2)
+    # 高斯核(RBF)
+    #svmSklearn.sklearnSVM()
+
+    # 简化版的SMO
+    #svmSklearn.simpleSVM()
+
+    # 完整版的SMO,选择合适的优化变量
+    #svmSklearn.completeSVM()
+
+    # 带核函数的SVM
+    #svmSklearn.rbfSVM()
+
+    # 手写数字识别：SVM
+    svmSklearn.digitsSVM()
+
 
