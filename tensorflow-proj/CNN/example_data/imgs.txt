@@ -1,0 +1,9 @@
+image/class_2/11.png DEER
+image/class_2/12.png HORSE
+image/class_2/10.png CAT
+image/class_1/3.png Trunk
+image/class_1/2.png Trunk
+image/class_1/1.png FROG
+image/class_3/18.png CAT
+image/class_3/17.png CAB
+image/class_3/16.png MARKET
